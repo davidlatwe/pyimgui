@@ -573,6 +573,10 @@ VIEWPORT_FLAGS_OWNED_BY_APP = enums.ImGuiViewportFlags_OwnedByApp               
 
 include "imgui/common.pyx"
 
+cdef extern from "Python.h":
+    void* PyLong_AsVoidPtr(object)
+    object PyLong_FromVoidPtr(void *p)
+
 _contexts = {}
 cdef class _ImGuiContext(object):
     cdef cimgui.ImGuiContext* _ptr
@@ -586,12 +590,26 @@ cdef class _ImGuiContext(object):
         if ptr == NULL:
             return None
 
+        print("from_ptr(",<uintptr_t>ptr,")")
+
         if (<uintptr_t>ptr) not in _contexts:
+            print('[DEBUG] Add a new context...')
             instance = _ImGuiContext()
             instance._ptr = ptr
             _contexts[<uintptr_t>ptr] = instance
 
         return _contexts[<uintptr_t>ptr]
+
+    # TODO(Sam): Change this temporary name...
+    @staticmethod
+    def _from_int_ptr(ptr_val):
+        cdef void* ptr
+        ptr = PyLong_AsVoidPtr(ptr_val)        
+        ctx = _ImGuiContext.from_ptr(<cimgui.ImGuiContext*>ptr)
+        set_current_context(ctx)
+        return ctx
+    def _to_int_ptr(_ImGuiContext self):
+        return PyLong_FromVoidPtr(self._ptr)
 
     def __eq__(_ImGuiContext self, _ImGuiContext other):
         return other._ptr == self._ptr
@@ -10818,6 +10836,21 @@ def save_ini_settings_to_memory():
     """
     return _from_bytes(cimgui.SaveIniSettingsToMemory(NULL))
 
+def get_allocator_functions():
+    #TODO: document
+    cdef cimgui.ImGuiMemAllocFunc alloc_func = NULL
+    cdef cimgui.ImGuiMemFreeFunc free_func = NULL
+    cdef void* user_data = NULL
+    cimgui.GetAllocatorFunctions(&alloc_func, &free_func, &user_data)
+    return PyLong_FromVoidPtr(alloc_func), PyLong_FromVoidPtr(free_func), PyLong_FromVoidPtr(user_data)
+
+def set_allocator_functions(py_alloc_func, py_free_func, py_user_data):
+    #TODO: document
+    cdef cimgui.ImGuiMemAllocFunc alloc_func = <cimgui.ImGuiMemAllocFunc>PyLong_AsVoidPtr(py_alloc_func)
+    cdef cimgui.ImGuiMemFreeFunc free_func = <cimgui.ImGuiMemFreeFunc>PyLong_AsVoidPtr(py_free_func)
+    cdef void* user_data = PyLong_AsVoidPtr(py_user_data)
+    cimgui.SetAllocatorFunctions(alloc_func, free_func, user_data)
+
 def set_clipboard_text(str text):
     """Set the clipboard content
 
@@ -12571,7 +12604,6 @@ def create_context(_FontAtlas shared_font_atlas = None):
     internal.UpdateImGuiContext(_ptr)
 
     return _ImGuiContext.from_ptr(_ptr)
-
 
 def destroy_context(_ImGuiContext ctx = None):
     """DestroyContext

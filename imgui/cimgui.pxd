@@ -2228,17 +2228,16 @@ cdef extern from "imgui.h" namespace "ImGui":
 
     # ====
     # Memory Allocators
-    void SetAllocatorFunctions( # ✗
-            void* (*alloc_func)(size_t sz, void* user_data),  # TODO: Callback
-            void (*free_func)(void* ptr, void* user_data),  # TODO: Callback
+    void SetAllocatorFunctions( # ✓
+            void* (*alloc_func)(size_t sz, void* user_data),
+            void (*free_func)(void* ptr, void* user_data),
             # note: optional
             void* user_data                 # = NULL
     ) except +
-    void GetAllocatorFunctions( # ✗
-        ImGuiMemAllocFunc* p_alloc_func, # TODO: Callback
-        ImGuiMemFreeFunc* p_free_func, # TODO: Callback
+    void GetAllocatorFunctions( # ✓
+        ImGuiMemAllocFunc* p_alloc_func,
+        ImGuiMemFreeFunc* p_free_func,
         void** p_user_data
     ) except +
     void* MemAlloc(size_t size) except + # ✗
     void MemFree(void* ptr) except + # ✗
-
